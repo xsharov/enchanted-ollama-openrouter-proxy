@@ -108,7 +108,10 @@ func main() {
 			if err != nil {
 				// Handle errors
 				slog.Error("Stream error", "Error", err)
-				break
+				c.Status(http.StatusInternalServerError)
+				c.Writer.Write([]byte("Error streaming: " + err.Error() + "\n"))
+				c.Writer.Flush()
+				return
 			}
 
 			// Build JSON response structure
@@ -130,7 +133,8 @@ func main() {
 			// Marshal and send the JSON response
 			if err := json.NewEncoder(c.Writer).Encode(responseJSON); err != nil {
 				slog.Error("Error encoding response", "Error", err)
-				break
+				c.Status(http.StatusInternalServerError)
+				return
 			}
 
 			// Flush data to send it immediately
