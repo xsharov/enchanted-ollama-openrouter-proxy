@@ -31,6 +31,9 @@ func main() {
 	r.GET("/", func(c *gin.Context) {
 		c.String(http.StatusOK, "Ollama is running")
 	})
+	r.HEAD("/", func(c *gin.Context) {
+		c.String(http.StatusOK, "")
+	})
 
 	r.GET("/api/tags", func(c *gin.Context) {
 		models, err := provider.GetModels()
