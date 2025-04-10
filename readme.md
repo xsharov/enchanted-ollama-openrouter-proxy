@@ -11,7 +11,7 @@ Currently, it is enough for usage with [Jetbrains AI assistant](https://blog.jet
   
   **Note**: OpenRouter model names may sometimes include a vendor prefix, for example `deepseek/deepseek-chat-v3-0324:free`. To make sure filtering works correctly, remove the vendor part when adding the name to your `models-filter` file, e.g. `deepseek-chat-v3-0324:free`.
   
-- **Ollama-like API**: The server listens on `8080` and exposes endpoints similar to Ollama (e.g., `/api/chat`, `/api/tags`).
+- **Ollama-like API**: The server listens on `11434` and exposes endpoints similar to Ollama (e.g., `/api/chat`, `/api/tags`).
 - **Model Listing**: Fetch a list of available models from OpenRouter.
 - **Model Details**: Retrieve metadata about a specific model.
 - **Streaming Chat**: Forward streaming responses from OpenRouter in a chunked JSON format that is compatible with Ollama’s expectations.
