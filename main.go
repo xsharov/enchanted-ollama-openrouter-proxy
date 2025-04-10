@@ -1,17 +1,45 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	openai "github.com/sashabaranov/go-openai"
 )
+
+var modelFilter map[string]struct{}
+
+func loadModelFilter(path string) (map[string]struct{}, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	filter := make(map[string]struct{})
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line != "" {
+			filter[line] = struct{}{}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return filter, nil
+}
 
 func main() {
 	r := gin.Default()
@@ -28,6 +56,23 @@ func main() {
 
 	provider := NewOpenrouterProvider(apiKey)
 
+	filter, err := loadModelFilter("models-filter")
+	if err != nil {
+		if os.IsNotExist(err) {
+			slog.Info("models-filter file not found. Skipping model filtering.")
+			modelFilter = make(map[string]struct{})
+		} else {
+			slog.Error("Error loading models filter", "Error", err)
+			return
+		}
+	} else {
+		modelFilter = filter
+		slog.Info("Loaded models from filter:")
+		for model := range modelFilter {
+			slog.Info(" - " + model)
+		}
+	}
+
 	r.GET("/", func(c *gin.Context) {
 		c.String(http.StatusOK, "Ollama is running")
 	})
@@ -42,8 +87,27 @@ func main() {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		// Respond with the list of models
-		c.JSON(http.StatusOK, gin.H{"models": models})
+		filter := modelFilter
+		// Construct a new array of model objects with extra fields
+		newModels := make([]map[string]interface{}, 0, len(models))
+		for _, m := range models {
+			// Если фильтр пустой, значит пропускаем проверку и берём все модели
+			if len(filter) > 0 {
+				if _, ok := filter[m.Model]; !ok {
+					continue
+				}
+			}
+			newModels = append(newModels, map[string]interface{}{
+				"name":        m.Name,
+				"model":       m.Model,
+				"modified_at": m.ModifiedAt,
+				"size":        270898672,
+				"digest":      "9077fe9d2ae1a4a41a868836b56b8163731a8fe16621397028c2c76f838c6907",
+				"details":     m.Details,
+			})
+		}
+
+		c.JSON(http.StatusOK, gin.H{"models": newModels})
 	})
 
 	r.POST("/api/show", func(c *gin.Context) {
@@ -164,5 +228,5 @@ func main() {
 		}
 	})
 
-	r.Run(":8080")
+	r.Run(":11434")
 }
