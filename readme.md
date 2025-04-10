@@ -28,7 +28,7 @@ You can provide your **OpenRouter** (OpenAI-compatible) API key through an envir
 
     ./ollama-proxy "your-openrouter-api-key"
 
-Once running, the proxy listens on port `8080`. You can make requests to `http://localhost:8080` with your Ollama-compatible tooling.
+Once running, the proxy listens on port `11434`. You can make requests to `http://localhost:11434` with your Ollama-compatible tooling.
 
 ## Installation
 1. **Clone the Repository**:
