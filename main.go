@@ -158,18 +158,71 @@ func main() {
 		// для сбора полного ответа и отправки его одним JSON.
 		// Пока реализуем только стриминг.
 		if !streamRequested {
-			// TODO: Реализовать не-потоковый ответ, если нужно
-			c.JSON(http.StatusNotImplemented, gin.H{"error": "Non-streaming response not implemented yet"})
+			// Handle non-streaming response
+			fullModelName, err := provider.GetFullModelName(request.Model)
+			if err != nil {
+				slog.Error("Error getting full model name", "Error", err)
+				// Ollama returns 404 for invalid model names
+				c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				return
+			}
+
+			// Call Chat to get the complete response
+			response, err := provider.Chat(request.Messages, fullModelName)
+			if err != nil {
+				slog.Error("Failed to get chat response", "Error", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+
+			// Format the response according to Ollama's format
+			if len(response.Choices) == 0 {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "No response from model"})
+				return
+			}
+
+			// Extract the content from the response
+			content := ""
+			if len(response.Choices) > 0 && response.Choices[0].Message.Content != "" {
+				content = response.Choices[0].Message.Content
+			}
+
+			// Get finish reason, default to "stop" if not provided
+			finishReason := "stop"
+			if response.Choices[0].FinishReason != "" {
+				finishReason = string(response.Choices[0].FinishReason)
+			}
+
+			// Create Ollama-compatible response
+			ollamaResponse := map[string]interface{}{
+				"model":             fullModelName,
+				"created_at":        time.Now().Format(time.RFC3339),
+				"message": map[string]string{
+					"role":    "assistant",
+					"content": content,
+				},
+				"done":              true,
+				"finish_reason":     finishReason,
+				"total_duration":    response.Usage.TotalTokens * 10, // Approximate duration based on token count
+				"load_duration":     0,
+				"prompt_eval_count": response.Usage.PromptTokens,
+				"eval_count":        response.Usage.CompletionTokens,
+				"eval_duration":     response.Usage.CompletionTokens * 10, // Approximate duration based on token count
+			}
+
+			c.JSON(http.StatusOK, ollamaResponse)
 			return
 		}
 
+		slog.Info("Requested model", "model", request.Model)
 		fullModelName, err := provider.GetFullModelName(request.Model)
 		if err != nil {
-			slog.Error("Error getting full model name", "Error", err)
+			slog.Error("Error getting full model name", "Error", err, "model", request.Model)
 			// Ollama возвращает 404 на неправильное имя модели
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
 		}
+		slog.Info("Using model", "fullModelName", fullModelName)
 
 		// Call ChatStream to get the stream
 		stream, err := provider.ChatStream(request.Messages, fullModelName)
@@ -258,6 +311,10 @@ func main() {
 		finalResponse := map[string]interface{}{
 			"model":             fullModelName,
 			"created_at":        time.Now().Format(time.RFC3339),
+			"message": map[string]string{
+				"role":    "assistant",
+				"content": "", // Пустой контент для финального сообщения
+			},
 			"done":              true,
 			"finish_reason":     lastFinishReason, // Необязательно для /api/chat Ollama, но не вредит
 			"total_duration":    0,

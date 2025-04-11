@@ -23,6 +23,24 @@ func NewOpenrouterProvider(apiKey string) *OpenrouterProvider {
 	}
 }
 
+func (o *OpenrouterProvider) Chat(messages []openai.ChatCompletionMessage, modelName string) (openai.ChatCompletionResponse, error) {
+	// Create a chat completion request
+	req := openai.ChatCompletionRequest{
+		Model:    modelName,
+		Messages: messages,
+		Stream:   false,
+	}
+
+	// Call the OpenAI API to get a complete response
+	resp, err := o.client.CreateChatCompletion(context.Background(), req)
+	if err != nil {
+		return openai.ChatCompletionResponse{}, err
+	}
+
+	// Return the complete response
+	return resp, nil
+}
+
 func (o *OpenrouterProvider) ChatStream(messages []openai.ChatCompletionMessage, modelName string) (*openai.ChatCompletionStream, error) {
 	// Create a chat completion request
 	req := openai.ChatCompletionRequest{
@@ -123,10 +141,29 @@ func (o *OpenrouterProvider) GetModelDetails(modelName string) (map[string]inter
 }
 
 func (o *OpenrouterProvider) GetFullModelName(alias string) (string, error) {
+	// If modelNames is empty or not populated yet, try to get models first
+	if len(o.modelNames) == 0 {
+		_, err := o.GetModels()
+		if err != nil {
+			return "", fmt.Errorf("failed to get models: %w", err)
+		}
+	}
+
+	// First try exact match
 	for _, fullName := range o.modelNames {
-		if strings.HasSuffix(fullName, alias) { // Match by alias suffix
+		if fullName == alias {
 			return fullName, nil
 		}
 	}
-	return "", fmt.Errorf("model alias '%s' not found", alias)
+
+	// Then try suffix match
+	for _, fullName := range o.modelNames {
+		if strings.HasSuffix(fullName, alias) {
+			return fullName, nil
+		}
+	}
+
+	// If no match found, just use the alias as is
+	// This allows direct use of model names that might not be in the list
+	return alias, nil
 }
