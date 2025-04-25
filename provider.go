@@ -14,9 +14,9 @@ type OpenrouterProvider struct {
 	modelNames []string // Shared storage for model names
 }
 
-func NewOpenrouterProvider(apiKey string) *OpenrouterProvider {
+func NewOpenrouterProvider(baseUrl string, apiKey string) *OpenrouterProvider {
 	config := openai.DefaultConfig(apiKey)
-	config.BaseURL = "https://openrouter.ai/api/v1/" // Custom endpoint if needed
+	config.BaseURL = baseUrl
 	return &OpenrouterProvider{
 		client:     openai.NewClientWithConfig(config),
 		modelNames: []string{},

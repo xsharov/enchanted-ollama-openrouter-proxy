@@ -1,0 +1,9 @@
+services:
+  enchanted-ollama-proxy:
+    environment:
+      OPENAI_BASE_URL: "https://openrouter.ai/api/v1/"
+      OPENAI_API_KEY: "YOUR_KEY_HERE"
+    build: .
+    ports:
+      - "11434:11434"
+    restart: unless-stopped
