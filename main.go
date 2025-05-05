@@ -48,14 +48,24 @@ func main() {
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
 		if len(os.Args) > 1 {
-			apiKey = os.Args[1]
+			apiKey = os.Args[len(os.Args)-1]
 		} else {
 			slog.Error("OPENAI_API_KEY environment variable or command-line argument not set.")
 			return
 		}
 	}
 
-	provider := NewOpenrouterProvider(apiKey)
+	// Try to load the API key from environment variables or command-line arguments
+	baseUrl := os.Getenv("OPENAI_BASE_URL")
+	if baseUrl == "" {
+		if len(os.Args) > 2 {
+			baseUrl = os.Args[1]
+		} else {
+			baseUrl = "https://openrouter.ai/api/v1/"
+		}
+	}
+
+	provider := NewOpenrouterProvider(baseUrl, apiKey)
 
 	filter, err := loadModelFilter("models-filter")
 	if err != nil {
@@ -195,8 +205,8 @@ func main() {
 
 			// Create Ollama-compatible response
 			ollamaResponse := map[string]interface{}{
-				"model":             fullModelName,
-				"created_at":        time.Now().Format(time.RFC3339),
+				"model":      fullModelName,
+				"created_at": time.Now().Format(time.RFC3339),
 				"message": map[string]string{
 					"role":    "assistant",
 					"content": content,
@@ -309,8 +319,8 @@ func main() {
 
 		// ВАЖНО: Замените nil на 0 для числовых полей статистики
 		finalResponse := map[string]interface{}{
-			"model":             fullModelName,
-			"created_at":        time.Now().Format(time.RFC3339),
+			"model":      fullModelName,
+			"created_at": time.Now().Format(time.RFC3339),
 			"message": map[string]string{
 				"role":    "assistant",
 				"content": "", // Пустой контент для финального сообщения
