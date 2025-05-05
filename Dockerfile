@@ -15,5 +15,5 @@ LABEL org.opencontainers.image.source="https://github.com/marknefedov/ollama-ope
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /app/ollama-proxy /ollama-proxy
 
-EXPOSE 8080
+EXPOSE 11434
 ENTRYPOINT ["/ollama-proxy"]
